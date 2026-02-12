@@ -72,7 +72,7 @@ class MainActivity : AppCompatActivity() {
                 log("Input and Thru are same device — refused")
             }
         }
- */
+
         val devices = midiManager.devices
 
         val inputCandidates = devices.filter { it.outputPortCount > 0 }
@@ -90,6 +90,39 @@ class MainActivity : AppCompatActivity() {
             selectedThruInfo = thruCandidates.first()
             openThruDevice(selectedThruInfo!!)
         }
+*/
+        val devices = midiManager.devices
+
+// ---- INPUT: prefer physical USB MIDI devices ----
+        val inputCandidates = devices.filter { info ->
+            info.outputPortCount > 0 &&
+                    info.properties.containsKey(MidiDeviceInfo.PROPERTY_USB_DEVICE)
+        }
+
+        if (inputCandidates.isEmpty()) {
+            log("No physical MIDI keyboard found")
+            return
+        }
+
+        selectedInputInfo = inputCandidates.first()
+        log("Selected INPUT: ${deviceLabel(selectedInputInfo!!)}")
+        openInputDevice(selectedInputInfo!!)
+
+// ---- THRU: any device that accepts MIDI, except the input ----
+        val thruCandidates = devices.filter { info ->
+            info.inputPortCount > 0 &&
+                    info.id != selectedInputInfo!!.id
+        }
+
+        if (thruCandidates.isEmpty()) {
+            log("No MIDI thru device found")
+            return
+        }
+
+        selectedThruInfo = thruCandidates.first()
+        log("Selected THRU: ${deviceLabel(selectedThruInfo!!)}")
+        openThruDevice(selectedThruInfo!!)
+
 
     }
 
@@ -196,7 +229,28 @@ class MainActivity : AppCompatActivity() {
     // ---------------------------------------------------------------------
     // MIDI input
     // ---------------------------------------------------------------------
+    private val midiReceiver = object : MidiReceiver() {
 
+        override fun onSend(
+            data: ByteArray,
+            offset: Int,
+            count: Int,
+            timestamp: Long
+        ) {
+            log("RX MIDI $count bytes")
+
+            if (thruPort == null) {
+                log("THRU port is NULL")
+                return
+            }
+
+            log("Calling thruPort.send()")
+            thruPort!!.send(data, offset, count)
+            log("thruPort.send() done")
+        }
+    }
+
+    /*
     private val midiReceiver = object : MidiReceiver() {
 
         override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
@@ -307,6 +361,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    */
 
     // ---------------------------------------------------------------------
     // UI
