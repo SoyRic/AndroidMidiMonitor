@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
         //midiManager.devices.forEach { openDevice(it) }
 
         // openThruDevice()
-
+/*
         val devices = midiManager.devices
 
         if (devices.size >= 2) {
@@ -71,6 +71,24 @@ class MainActivity : AppCompatActivity() {
             } else {
                 log("Input and Thru are same device — refused")
             }
+        }
+ */
+        val devices = midiManager.devices
+
+        val inputCandidates = devices.filter { it.outputPortCount > 0 }
+        val thruCandidates  = devices.filter { it.inputPortCount > 0 }
+
+        if (inputCandidates.isEmpty()) {
+            log("No MIDI input devices found (outputPortCount > 0)")
+            return
+        }
+
+        selectedInputInfo = inputCandidates.first()
+        openInputDevice(selectedInputInfo!!)
+
+        if (thruCandidates.isNotEmpty()) {
+            selectedThruInfo = thruCandidates.first()
+            openThruDevice(selectedThruInfo!!)
         }
 
     }
