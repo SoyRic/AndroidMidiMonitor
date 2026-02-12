@@ -50,7 +50,9 @@ class MidiController(
         }
     }
 
+    /*
     private fun tryOpen(info: MidiDeviceInfo) {
+
         val inputs = info.inputPortCount
         val outputs = info.outputPortCount
 
@@ -60,6 +62,29 @@ class MidiController(
         when {
             inputs > 0 && inputDevice == null -> openInput(info)
             outputs > 0 && thruDevice == null -> openThru(info)
+        }
+    }
+    */
+
+    private fun tryOpen(info: MidiDeviceInfo) {
+        val inputs = info.inputPortCount
+        val outputs = info.outputPortCount
+        val name = deviceName(info)
+
+        logger("Found $name in=$inputs out=$outputs type=${info.type}")
+
+        // INPUT: prefer USB devices that OUTPUT MIDI
+        if (isUsbDevice(info) && outputs > 0 && inputDevice == null) {
+            logger("→ Selected as INPUT: $name")
+            openInput(info)
+            return
+        }
+
+        // THRU: any device that ACCEPTS MIDI
+        if (inputs > 0 && thruDevice == null) {
+            logger("→ Selected as THRU: $name")
+            openThru(info)
+            return
         }
     }
 
@@ -82,6 +107,13 @@ class MidiController(
             logger("THRU connected")
         }, Handler(Looper.getMainLooper()))
     }
+
+    private fun isUsbDevice(info: MidiDeviceInfo): Boolean {
+        return info.type == MidiDeviceInfo.TYPE_USB
+    }
+
+    private fun deviceName(info: MidiDeviceInfo): String =
+        info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown"
 
 }
 
