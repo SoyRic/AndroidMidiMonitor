@@ -128,6 +128,25 @@ class MainActivity : AppCompatActivity() {
         val inputCandidates = devices.filter { it.outputPortCount > 0 }
         val thruCandidates = devices.filter { it.inputPortCount > 0 }
 
+        val inputNames = mutableListOf("— Select INPUT device —")
+        inputNames.addAll(
+            midiController.inputDevices.map {
+                it.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed MIDI device"
+            }
+        )
+
+
+        val thruNames = mutableListOf("— Select THRU device —")
+        thruNames.addAll(
+            midiController.thruDevices.map {
+                it.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed MIDI device"
+            }
+        )
+
+
+        inputSpinner.setSelection(0, false)
+        thruSpinner.setSelection(0, false)
+
         inputSpinner.adapter =
             ArrayAdapter(this, android.R.layout.simple_spinner_item,
                 inputCandidates.map { deviceLabel(it) })
@@ -146,14 +165,22 @@ class MainActivity : AppCompatActivity() {
                     position: Int,
                     id: Long
                 ) {
-                    selectedInputDevice = inputDevices[position]
-
-                    if (selectedInputDevice == selectedThruDevice) {
-                        log("Input and Thru cannot be the same device")
+                    // 0 = “— Select INPUT device —”
+                    if (position == 0) {
+                        midiController.disconnectInput()
+                        log("Input disconnected")
                         return
                     }
 
-                    midiController.openInputDevice(selectedInputDevice!!)
+                    val device = midiController.inputDevices[position - 1]
+                    midiController.connectInput(device)
+                    log(
+                        "Input connected: ${
+                            device.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+                                ?: "Unnamed MIDI device"
+                        }"
+                    )
+
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>) {
@@ -170,14 +197,21 @@ class MainActivity : AppCompatActivity() {
                     position: Int,
                     id: Long
                 ) {
-                    selectedThruDevice = thruDevices[position]
-
-                    if (selectedThruDevice == selectedInputDevice) {
-                        log("Thru and Input cannot be the same device")
+                    if (position == 0) {
+                        midiController.disconnectThru()
+                        log("Thru disconnected")
                         return
                     }
 
-                    midiController.openThruDevice(selectedThruDevice!!)
+                    val device = midiController.thruDevices[position - 1]
+                    midiController.connectThru(device)
+                    log(
+                        "Input connected: ${
+                            device.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+                                ?: "Unnamed MIDI device"
+                        }"
+                    )
+
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>) {}
@@ -199,10 +233,8 @@ class MainActivity : AppCompatActivity() {
     private fun log(msg: String) {
         runOnUiThread {
             logView.append(msg + "\n")
-
-            val parent = logView.parent as ScrollView
-            parent.post {
-                parent.fullScroll(View.FOCUS_DOWN)
+            (logView.parent as ScrollView).post {
+                (logView.parent as ScrollView).fullScroll(View.FOCUS_DOWN)
             }
         }
     }

@@ -14,10 +14,17 @@ class MidiController(
     private val context: Context,
     private val logger: (String) -> Unit
 ) {
-
-    private val handler = Handler(Looper.getMainLooper())
     private val midiManager =
         context.getSystemService(Context.MIDI_SERVICE) as MidiManager
+
+    val inputDevices: List<MidiDeviceInfo>
+        get() = midiManager.devices.filter { it.inputPortCount > 0 }
+
+    val thruDevices: List<MidiDeviceInfo>
+        get() = midiManager.devices.filter { it.outputPortCount > 0 }
+
+    private val handler = Handler(Looper.getMainLooper())
+
 
     private var inputDevice: MidiDevice? = null
     private var thruDevice: MidiDevice? = null
@@ -66,22 +73,67 @@ class MidiController(
             logger("MIDI device removed")
         }
     }
+    fun connectInput(deviceInfo: MidiDeviceInfo) {
+        disconnectInput()
 
-    /*
-    private fun tryOpen(info: MidiDeviceInfo) {
+        logger("Connecting MIDI input: ${
+            deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+        }")
 
-        val inputs = info.inputPortCount
-        val outputs = info.outputPortCount
-
-        logger("Found ${info.properties.getString(MidiDeviceInfo.PROPERTY_NAME)} " +
-                "in=$inputs out=$outputs")
-
-        when {
-            inputs > 0 && inputDevice == null -> openInput(info)
-            outputs > 0 && thruDevice == null -> openThru(info)
-        }
+        midiManager.openDevice(deviceInfo, { device ->
+            inputDevice = device
+            inputPort = device.openOutputPort(0)
+        }, Handler(Looper.getMainLooper()))
     }
-    */
+
+    fun connectThru(deviceInfo: MidiDeviceInfo) {
+        disconnectThru()
+
+        logger(
+            "Connecting MIDI thru: ${
+                deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
+                    ?: "Unnamed MIDI device"
+            }"
+        )
+
+        midiManager.openDevice(deviceInfo, { device ->
+            thruDevice = device
+            thruPort = device.openInputPort(0)
+
+            if (thruPort == null) {
+                logger("Failed to open MIDI thru port")
+            }
+        }, Handler(Looper.getMainLooper()))
+    }
+
+    fun disconnectInput() {
+        logger("Disconnecting MIDI input")
+
+        try {
+            inputPort?.close()
+            inputDevice?.close()
+        } catch (e: Exception) {
+            logger("Error disconnecting input: ${e.message}")
+        }
+
+        inputPort = null
+        inputDevice = null
+    }
+
+    fun disconnectThru() {
+        logger("Disconnecting MIDI Thru")
+
+        try {
+            thruPort?.close()
+            thruDevice?.close()
+        } catch (e: Exception) {
+            logger("Error disconnecting thru: ${e.message}")
+        }
+
+        thruPort = null
+        thruDevice = null
+    }
+
 
     private fun tryOpen(info: MidiDeviceInfo) {
         val inputs = info.inputPortCount
