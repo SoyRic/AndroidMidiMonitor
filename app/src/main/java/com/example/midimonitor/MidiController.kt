@@ -20,8 +20,15 @@ class MidiController(
     val inputDevices: List<MidiDeviceInfo>
         get() = midiManager.devices.filter { it.inputPortCount > 0 }
 
+    //fun connectInput(deviceInfo: MidiDeviceInfo)
+    //fun disconnectInput()
+
+
     val thruDevices: List<MidiDeviceInfo>
-        get() = midiManager.devices.filter { it.outputPortCount > 0 }
+        get() = midiManager.devices.filter { it.inputPortCount > 0 }
+
+    //fun connectThru(deviceInfo: MidiDeviceInfo)
+    //fun disconnectThru()
 
     private val handler = Handler(Looper.getMainLooper())
 

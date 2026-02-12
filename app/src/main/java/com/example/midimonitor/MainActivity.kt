@@ -26,6 +26,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Box
 import android.content.Context
 
+data class MidiDeviceItem(
+    val info: MidiDeviceInfo,
+    val label: String
+)
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,27 +45,29 @@ class MainActivity : AppCompatActivity() {
     private val thruDevices  = mutableListOf<MidiDeviceInfo>()
 
 
-/*
+    private var inputItems: List<MidiDeviceItem?> = emptyList()
+    private var thruItems: List<MidiDeviceItem?> = emptyList()
+    private var isRefreshingDevices = false
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1️⃣ Bind views FIRST
-        inputSpinner = findViewById(R.id.inputSpinner)
-        thruSpinner = findViewById(R.id.thruSpinner)
+        // 🔴 MUST be first UI init
         logView = findViewById(R.id.logView)
 
-        // 2️⃣ Init controller
-        midiController = MidiController(this, ::log)
+        inputSpinner = findViewById(R.id.inputSpinner)
+        thruSpinner = findViewById(R.id.thruSpinner)
 
-        refreshDeviceLists()
-        setupDevicePickers()
+        midiController = MidiController(
+            context = this,
+            logger = ::log
+        )
 
-
-        // 3️⃣ Wire UI logic
         setupDevicePickers()
     }
-*/
+/*
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -98,7 +105,7 @@ class MainActivity : AppCompatActivity() {
             Handler(Looper.getMainLooper())
         )
     }
-
+*/
 
     private fun refreshDeviceLists() {
         inputDevices.clear()
@@ -122,6 +129,11 @@ class MainActivity : AppCompatActivity() {
         log("Devices refreshed: inputs=${inputDevices.size}, thru=${thruDevices.size}")
     }
 
+    private fun setupDevicePickers() {
+        refreshInputDevices()
+        refreshThruDevices()
+    }
+/*
     private fun setupDevicePickers() {
         val devices = midiController.listDevices()
 
@@ -216,6 +228,119 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onNothingSelected(parent: AdapterView<*>) {}
             }
+
+    }
+*/
+private fun refreshInputDevices() {
+    isRefreshingDevices = true
+
+    inputItems = listOf(null) + midiController.inputDevices.map {
+        MidiDeviceItem(
+            info = it,
+            label = it.properties.getString(
+                MidiDeviceInfo.PROPERTY_NAME
+            ) ?: "Unnamed MIDI device"
+        )
+    }
+
+    val adapter = ArrayAdapter(
+        this,
+        android.R.layout.simple_spinner_item,
+        inputItems.map { it?.label ?: "— Select INPUT device —" }
+    )
+
+    adapter.setDropDownViewResource(
+        android.R.layout.simple_spinner_dropdown_item
+    )
+
+    inputSpinner.adapter = adapter
+    inputSpinner.setSelection(0, false)
+
+    inputSpinner.onItemSelectedListener =
+        object : AdapterView.OnItemSelectedListener {
+
+            override fun onItemSelected(
+                parent: AdapterView<*>,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                if (isRefreshingDevices) return
+
+                val item = inputItems[position]
+
+                if (item == null) {
+                    midiController.disconnectInput()
+                    log("Input disconnected")
+                    return
+                }
+
+                midiController.connectInput(item.info)
+                log("Input connected: ${item.label}")
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+    inputSpinner.adapter = adapter
+    inputSpinner.setSelection(0, false)
+
+    isRefreshingDevices = false
+}
+
+    private fun refreshThruDevices() {
+        isRefreshingDevices = true
+
+            thruItems = listOf(null) + midiController.thruDevices.map {
+            MidiDeviceItem(
+                info = it,
+                label = it.properties.getString(
+                    MidiDeviceInfo.PROPERTY_NAME
+                ) ?: "Unnamed MIDI device"
+            )
+        }
+
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            thruItems.map { it?.label ?: "— Select THRU device —" }
+        )
+
+        adapter.setDropDownViewResource(
+            android.R.layout.simple_spinner_dropdown_item
+        )
+
+        thruSpinner.adapter = adapter
+        thruSpinner.setSelection(0, false)
+
+        thruSpinner.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+
+                override fun onItemSelected(
+                    parent: AdapterView<*>,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    if (isRefreshingDevices) return
+
+                    val item = thruItems[position]
+
+                    if (item == null) {
+                        midiController.disconnectThru()
+                        log("Thru disconnected")
+                        return
+                    }
+
+                    midiController.connectThru(item.info)
+                    log("Thru connected: ${item.label}")
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {}
+            }
+        thruSpinner.adapter = adapter
+        thruSpinner.setSelection(0, false)
+
+        isRefreshingDevices = false
 
     }
 
