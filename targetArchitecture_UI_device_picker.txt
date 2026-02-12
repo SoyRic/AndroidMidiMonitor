@@ -1,0 +1,31 @@
+let's proceed with UI device picker
+
+Great choice.
+A UI device picker is exactly the right next step — it removes heuristics and makes your router explicit, debuggable, and user-friendly.
+
+Below is a clean, incremental plan that fits your current architecture and does not break anything that already works.
+
+🎯 Goal
+
+Let the user select:
+
+MIDI INPUT device (keyboard, controller)
+MIDI THRU / OUTPUT device (Fluidsynth, synth app)
+
+At runtime, without restarting the app.
+
+1️⃣ High-level design (simple & robust)
+
+We add:
+
+MainActivity
+ ├── Two Spinners (Input / Thru)
+ ├── MidiController
+ │    ├── Enumerate devices
+ │    ├── Open selected INPUT
+ │    └── Open selected THRU
+ └── MidiProcessor (unchanged)
+
+
+Key rule:
+UI decides which devices → controller only opens what it’s told.
