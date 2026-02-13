@@ -1,239 +1,167 @@
-//3️⃣ MidiController (device + port management)
-//
-//This class owns everything Android-MIDI-related.
-
 package com.example.midimonitor
 
 import android.content.Context
-import android.media.midi.*
+import android.media.midi.MidiDeviceInfo
 import android.media.midi.MidiInputPort
+import android.media.midi.MidiManager
 import android.os.Handler
 import android.os.Looper
+//import androidx.compose.ui.graphics.colorspace.connect
+import java.io.IOException
 
 class MidiController(
-    private val context: Context,
+    context: Context,
     private val logger: (String) -> Unit
 ) {
-    private val midiManager =
-        context.getSystemService(Context.MIDI_SERVICE) as MidiManager
+    private val midiManager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     val inputDevices: List<MidiDeviceInfo>
         get() = midiManager.devices.filter { it.inputPortCount > 0 }
 
-    //fun connectInput(deviceInfo: MidiDeviceInfo)
-    //fun disconnectInput()
-
-
     val thruDevices: List<MidiDeviceInfo>
-        get() = midiManager.devices.filter { it.inputPortCount > 0 }
+        get() = midiManager.devices.filter { it.outputPortCount > 0 }
 
-    //fun connectThru(deviceInfo: MidiDeviceInfo)
-    //fun disconnectThru()
+    private val midiReceiver = MonitorReceiver(logger)
+    private var connectedOutputPort: android.media.midi.MidiOutputPort? = null
+    private var thruDevice: MidiDeviceInfo? = null
 
-    private val handler = Handler(Looper.getMainLooper())
-
-
-    private var inputDevice: MidiDevice? = null
-    private var thruDevice: MidiDevice? = null
-
-    private var inputPort: MidiOutputPort? = null
-
-    private var thruPort: MidiInputPort? = null
-
-
-    private val processor = MidiProcessor(logger)
-
-    fun start() {
-        midiManager.registerDeviceCallback(deviceCallback, Handler(Looper.getMainLooper()))
-        midiManager.devices.forEach { tryOpen(it) }
-    }
-
-    fun stop() {
-        inputPort?.close()
-        thruPort?.close()
-        inputDevice?.close()
-        thruDevice?.close()
-    }
-
-    private val midiReceiver = object : MidiReceiver() {
-        override fun onSend(
-            data: ByteArray,
-            offset: Int,
-            count: Int,
-            timestamp: Long
-        ) {
-            // Log raw MIDI (hex or parsed elsewhere)
-            logger("MIDI IN: ${data.copyOfRange(offset, offset + count).joinToString { "%02X".format(it) }}")
-
-            // MIDI THRU
-            thruPort?.send(data, offset, count)
-        }
-    }
-
-    private val deviceCallback = object : MidiManager.DeviceCallback() {
-
-        override fun onDeviceAdded(device: MidiDeviceInfo) {
-            tryOpen(device)
-        }
-
-        override fun onDeviceRemoved(device: MidiDeviceInfo) {
-            logger("MIDI device removed")
-        }
-    }
     fun connectInput(deviceInfo: MidiDeviceInfo) {
-        disconnectInput()
+        logger("Attempting to connect INPUT: ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
 
-        logger("Connecting MIDI input: ${
-            deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
-        }")
+        disconnectInput() // Close previous connection
 
         midiManager.openDevice(deviceInfo, { device ->
-            inputDevice = device
-            inputPort = device.openOutputPort(0)
-        }, Handler(Looper.getMainLooper()))
+            if (device == null) {
+                logger("Error: Could not open INPUT device.")
+                return@openDevice
+            }
+
+            val outputPort = device.openOutputPort(0)
+            if (outputPort == null) {
+                logger("Error: Could not open output port 0 on INPUT device.")
+                return@openDevice
+            }
+
+            outputPort.connect(midiReceiver)
+            connectedOutputPort = outputPort
+            logger("INPUT successfully connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
+        }, mainHandler)
     }
 
     fun connectThru(deviceInfo: MidiDeviceInfo) {
+        logger("Attempting to connect THRU: ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
+
         disconnectThru()
 
-        logger(
-            "Connecting MIDI thru: ${
-                deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)
-                    ?: "Unnamed MIDI device"
-            }"
-        )
+        midiManager.openDevice(deviceInfo, { device ->
+            if (device == null) {
+                logger("Error: Could not open THRU device.")
+                return@openDevice
+            }
+
+            val thruPort = device.openInputPort(0)
+            if (thruPort == null) {
+                logger("Error: Could not open input port 0 on THRU device.")
+                return@openDevice
+            }
+
+            midiReceiver.setThruPort(thruPort)
+            thruDevice = deviceInfo
+            logger("THRU successfully connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
+        }, mainHandler)
+    }
+/*
+    fun connectInput(deviceInfo: MidiDeviceInfo) {
+        disconnectInput()
 
         midiManager.openDevice(deviceInfo, { device ->
-            thruDevice = device
-            thruPort = device.openInputPort(0)
-
-            if (thruPort == null) {
-                logger("Failed to open MIDI thru port")
+            if (device == null) {
+                logger("Error: Could not open INPUT device.")
+                return@openDevice
             }
-        }, Handler(Looper.getMainLooper()))
+
+            val outputPort = device.openOutputPort(0)
+            if (outputPort == null) {
+                logger("Error: Could not open output port 0 on INPUT device.")
+                return@openDevice
+            }
+
+            outputPort.connect(midiReceiver)
+            connectedOutputPort = outputPort
+
+            logger("INPUT connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed device"}")
+
+        }, mainHandler)
     }
 
+ */
+
     fun disconnectInput() {
-        logger("Disconnecting MIDI input")
-
+        logger("Disconnecting INPUT")
         try {
-            inputPort?.close()
-            inputDevice?.close()
-        } catch (e: Exception) {
-            logger("Error disconnecting input: ${e.message}")
+            connectedOutputPort?.disconnect(midiReceiver)
+            connectedOutputPort?.close()
+        } catch (e: IOException) {
+            logger("Error disconnecting INPUT: ${e.message}")
         }
-
-        inputPort = null
-        inputDevice = null
+        connectedOutputPort = null
     }
 
     fun disconnectThru() {
-        logger("Disconnecting MIDI Thru")
+        logger("Disconnecting THRU")
+        midiReceiver.setThruPort(null)
+        thruDevice = null
+    }
 
+    /*
+    fun disconnectInput() {
         try {
-            thruPort?.close()
-            thruDevice?.close()
-        } catch (e: Exception) {
-            logger("Error disconnecting thru: ${e.message}")
+            connectedOutputPort?.disconnect(midiReceiver)
+            connectedOutputPort?.close()
+        } catch (e: IOException) {
+            logger("Error on disconnect: ${e.message}")
         }
+        connectedOutputPort = null
+    }
 
-        thruPort = null
+     */
+
+    /*
+    fun connectThru(deviceInfo: MidiDeviceInfo) {
+        disconnectThru()
+
+        midiManager.openDevice(deviceInfo, { device ->
+            if (device == null) {
+                logger("Error: Could not open THRU device.")
+                return@openDevice
+            }
+
+            val thruPort = device.openInputPort(0)
+            if (thruPort == null) {
+                logger("Error: Could not open THRU input port 0.")
+            } else {
+                midiReceiver.setThruPort(thruPort)
+                logger("THRU connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed device"}")
+            }
+
+            thruDevice = deviceInfo
+        }, mainHandler)
+    }
+
+     */
+
+    /*
+    fun disconnectThru() {
+        midiReceiver.setThruPort(null)
         thruDevice = null
     }
 
+     */
 
-    private fun tryOpen(info: MidiDeviceInfo) {
-        val inputs = info.inputPortCount
-        val outputs = info.outputPortCount
-        val name = deviceName(info)
-
-        logger("Found $name in=$inputs out=$outputs type=${info.type}")
-
-        // INPUT: prefer USB devices that OUTPUT MIDI
-        if (isUsbDevice(info) && outputs > 0 && inputDevice == null) {
-            logger("→ Selected as INPUT: $name")
-            openInput(info)
-            return
-        }
-
-        // THRU: any device that ACCEPTS MIDI
-        if (inputs > 0 && thruDevice == null) {
-            logger("→ Selected as THRU: $name")
-            openThru(info)
-            return
-        }
+    fun stop() {
+        disconnectInput()
+        disconnectThru()
+        logger("MIDI Controller stopped and resources released.")
     }
-
-    private fun openInput(info: MidiDeviceInfo) {
-        midiManager.openDevice(info, { device ->
-            inputDevice = device
-
-            val outputPort = device.openOutputPort(0)
-            outputPort?.connect(processor.receiver)
-
-            logger("INPUT connected (device output → receiver)")
-        }, Handler(Looper.getMainLooper()))
-    }
-
-    private fun openThru(info: MidiDeviceInfo) {
-        midiManager.openDevice(info, { device ->
-            thruDevice = device
-            thruPort = device.openInputPort(0)      // ✅ InputPort
-            processor.attachThru(thruPort!!)
-            logger("THRU connected")
-        }, Handler(Looper.getMainLooper()))
-    }
-
-
-    fun listDevices(): List<MidiDeviceInfo> {
-        return midiManager.devices.toList()
-    }
-
-
-    fun openInputDevice(info: MidiDeviceInfo) {
-        closeInput()
-
-        midiManager.openDevice(info, { device ->
-            inputDevice = device
-            inputPort = device.openOutputPort(0) // READ FROM HERE
-            inputPort?.connect(midiReceiver)
-            logger("Input device opened: ${info.properties}")
-        }, handler)
-    }
-
-    fun openThruDevice(info: MidiDeviceInfo) {
-        closeThru()
-
-        midiManager.openDevice(info, { device ->
-            thruDevice = device
-            thruPort = device.openInputPort(0) // WRITE TO HERE
-            logger("Thru device opened: ${info.properties}")
-        }, handler)
-    }
-
-    fun getDevices(): Array<MidiDeviceInfo> =
-        midiManager.devices
-
-    private fun closeInput() {
-        inputPort?.close()
-        inputDevice?.close()
-        inputPort = null
-        inputDevice = null
-    }
-
-    private fun closeThru() {
-        thruPort?.close()
-        thruDevice?.close()
-        thruPort = null
-        thruDevice = null
-    }
-
-    private fun isUsbDevice(info: MidiDeviceInfo): Boolean {
-        return info.type == MidiDeviceInfo.TYPE_USB
-    }
-
-    private fun deviceName(info: MidiDeviceInfo): String =
-        info.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unknown"
-
 }
-
