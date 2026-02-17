@@ -7,6 +7,7 @@ import android.widget.AdapterView
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import android.media.midi.MidiDeviceInfo   // ✅ Add this
 
@@ -27,6 +28,9 @@ class MainActivity : AppCompatActivity() {
     private var thruItems: List<MidiDeviceItem?> = emptyList()
     private lateinit var filterSpinner: Spinner
     private var selectedFilter: MidiFilterType = MidiFilterType.NONE
+    private lateinit var filterButton: Button
+    private var filterEnabled = false
+
 
     private fun setupFilterSpinner() {
         filterSpinner = findViewById(R.id.filterSpinner)
@@ -64,7 +68,25 @@ class MainActivity : AppCompatActivity() {
             logger = ::log,
         )
 
-        log("\n======================\n       OnCreate running\n======================\n")
+        //log("\n======================\n       OnCreate running\n======================\n")
+
+        //filterButton = findViewById(R.id.filterButton)
+        val filterButton = findViewById<Button>(R.id.filterButton)
+
+        filterButton.setOnClickListener {
+            filterEnabled = !filterEnabled
+            debugEnabled = filterEnabled   // 🔴 toggle together
+
+            midiController.setFilterEnabled(filterEnabled)
+            midiController.setDebugEnabled(debugEnabled)
+
+            filterButton.text =
+                if (filterEnabled) "FILTER ON" else "FILTER OFF"
+
+            log(
+                "Filter=${filterEnabled}, Debug=${debugEnabled}"
+            )
+        }
 
         setupDevicePickers()
 

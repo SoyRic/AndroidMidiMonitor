@@ -6,24 +6,43 @@ import java.io.IOException
 
 // --- Receiver Class ---
 class MonitorReceiver(
-    private val log: (String) -> Unit//,
+    private val log: (String) -> Unit
 ) : MidiReceiver() {
 
     @Volatile
-    private var thruInputPort: MidiInputPort? = null
+    var debug: Boolean = false   // 👈 NEW
     @Volatile
-    var filter: MidiFilterType = MidiFilterType.NONE   // ✅ NEW
+    private var thruInputPort: MidiInputPort? = null
+    //@Volatile
+    //var filter: MidiFilterType = MidiFilterType.NONE   // ✅ NEW
+    @Volatile
+    var filterNoteOff: Boolean = false
+
+    @Volatile private var filterEnabled = false
+    @Volatile private var debugEnabled = false
+
+
 
     fun setThruPort(port: MidiInputPort?) {
         thruInputPort = port
         log("THRU port set")
     }
 
+    fun setFilterEnabled(enabled: Boolean) {
+        filterEnabled = enabled
+    }
+
+    fun setDebugEnabled(enabled: Boolean) {
+        debugEnabled = enabled
+    }
+
     override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
 
         if (count > 0) {
-            val msg = parseMidi(data, offset, count)
-            log("Received MIDI: $msg")
+            if (debug) {
+                val msg = parseMidi(data, offset, count)
+                log("Received MIDI: $msg")
+            }
         }
 
         val status = data[offset].toInt() and 0xFF
@@ -33,10 +52,13 @@ class MonitorReceiver(
             if (count >= 3) data[offset + 2].toInt() and 0xFF
             else null
 
+        //if (filterEnabled && isNoteOff(data, offset)) {
+        //    return // ❌ discard NoteOff
+        //}
 
-        //if (!passesFilter(data, offset)) return
-        if (shouldDiscard(status, velocity)) {
-            return   // DROP event
+
+        if (filterNoteOff && isNoteOff(status, velocity)) {
+            return   // 🚫 DROP NOTE OFF
         }
 
         try {
@@ -51,6 +73,11 @@ class MonitorReceiver(
         }
     }
 
+    private fun isNoteOff(status: Int, velocity: Int?): Boolean {
+        val type = status and 0xF0
+        return type == 0x80 || (type == 0x90 && velocity == 0)
+    }
+/*
     fun shouldDiscard(
         status: Int,
         velocity: Int?
@@ -77,37 +104,7 @@ class MonitorReceiver(
                 type == 0xC0
         }
     }
-/*
-    private fun passesFilter(data: ByteArray, offset: Int): Boolean {
-        val status = data[offset].toInt() and 0xF0
-        return when (filter) {
-            MidiFilterType.ALL -> true
-            MidiFilterType.NOTE_ON -> status == 0x90
-            MidiFilterType.NOTE_OFF -> status == 0x80
-            MidiFilterType.CONTROL_CHANGE -> status == 0xB0
-            MidiFilterType.PROGRAM_CHANGE -> status == 0xC0
-        }
-    }
-    private fun matchesFilter(
-        status: Int,
-        velocity: Int?
-    ): Boolean {
-        val type = status and 0xF0
-
-        return when (filter) {
-            MidiFilterType.ALL -> true
-
-            MidiFilterType.NOTE_ON ->
-                type == 0x90 && velocity != null && velocity > 0
-
-            MidiFilterType.NOTE_OFF ->
-                type == 0x80 || (type == 0x90 && velocity == 0)
-
-            MidiFilterType.CONTROL_CHANGE ->
-                type == 0xB0
-        }
-    }
-*/
+ */
 
 }
 

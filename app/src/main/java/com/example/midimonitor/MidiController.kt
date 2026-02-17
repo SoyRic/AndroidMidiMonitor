@@ -99,4 +99,13 @@ class MidiController(
         disconnectThru()
         logger("MIDI Controller stopped and resources released.")
     }
+
+    fun setFilterEnabled(enabled: Boolean) {
+        midiReceiver.setFilterEnabled(enabled)
+    }
+
+    fun setDebugEnabled(enabled: Boolean) {
+        midiReceiver.setDebugEnabled(enabled)
+    }
+
 }
