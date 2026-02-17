@@ -26,6 +26,11 @@ class MidiController(
     private var connectedOutputPort: android.media.midi.MidiOutputPort? = null
     private var thruDevice: MidiDeviceInfo? = null
 
+    fun setFilter(filter: MidiFilterType) {
+        midiReceiver.filter = filter
+        logger("Filter set to: ${filter.label}")
+    }
+
     fun connectInput(deviceInfo: MidiDeviceInfo) {
         logger("Attempting to connect INPUT: ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
 
@@ -71,31 +76,6 @@ class MidiController(
             logger("THRU successfully connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
         }, mainHandler)
     }
-/*
-    fun connectInput(deviceInfo: MidiDeviceInfo) {
-        disconnectInput()
-
-        midiManager.openDevice(deviceInfo, { device ->
-            if (device == null) {
-                logger("Error: Could not open INPUT device.")
-                return@openDevice
-            }
-
-            val outputPort = device.openOutputPort(0)
-            if (outputPort == null) {
-                logger("Error: Could not open output port 0 on INPUT device.")
-                return@openDevice
-            }
-
-            outputPort.connect(midiReceiver)
-            connectedOutputPort = outputPort
-
-            logger("INPUT connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed device"}")
-
-        }, mainHandler)
-    }
-
- */
 
     fun disconnectInput() {
         logger("Disconnecting INPUT")
@@ -113,51 +93,6 @@ class MidiController(
         midiReceiver.setThruPort(null)
         thruDevice = null
     }
-
-    /*
-    fun disconnectInput() {
-        try {
-            connectedOutputPort?.disconnect(midiReceiver)
-            connectedOutputPort?.close()
-        } catch (e: IOException) {
-            logger("Error on disconnect: ${e.message}")
-        }
-        connectedOutputPort = null
-    }
-
-     */
-
-    /*
-    fun connectThru(deviceInfo: MidiDeviceInfo) {
-        disconnectThru()
-
-        midiManager.openDevice(deviceInfo, { device ->
-            if (device == null) {
-                logger("Error: Could not open THRU device.")
-                return@openDevice
-            }
-
-            val thruPort = device.openInputPort(0)
-            if (thruPort == null) {
-                logger("Error: Could not open THRU input port 0.")
-            } else {
-                midiReceiver.setThruPort(thruPort)
-                logger("THRU connected to ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME) ?: "Unnamed device"}")
-            }
-
-            thruDevice = deviceInfo
-        }, mainHandler)
-    }
-
-     */
-
-    /*
-    fun disconnectThru() {
-        midiReceiver.setThruPort(null)
-        thruDevice = null
-    }
-
-     */
 
     fun stop() {
         disconnectInput()

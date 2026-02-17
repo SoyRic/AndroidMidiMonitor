@@ -3,6 +3,7 @@ package com.example.midimonitor
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
@@ -24,6 +25,30 @@ class MainActivity : AppCompatActivity() {
     private var isRefreshingDevices = false
     private var inputItems: List<MidiDeviceItem?> = emptyList()
     private var thruItems: List<MidiDeviceItem?> = emptyList()
+    private lateinit var filterSpinner: Spinner
+    private var selectedFilter: MidiFilterType = MidiFilterType.NONE
+
+    private fun setupFilterSpinner() {
+        filterSpinner = findViewById(R.id.filterSpinner)
+        val adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            MidiFilterType.values().map { it.label }
+        )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        filterSpinner.adapter = adapter
+
+        filterSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                //selectedFilter = MidiFilterType.values()[position]
+                val filter = MidiFilterType.values()[position]
+                midiController.setFilter(filter)
+                log("MIDI Filter set to: ${selectedFilter.label}")
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,11 +59,17 @@ class MainActivity : AppCompatActivity() {
         thruSpinner = findViewById(R.id.thruSpinner)
 
         // Initialize MidiController with logger
-        midiController = MidiController(this, ::log)
+        midiController = MidiController(
+            context = this,
+            logger = ::log,
+        )
 
         log("\n======================\n       OnCreate running\n======================\n")
 
         setupDevicePickers()
+
+        setupFilterSpinner()
+
     }
 
     private fun setupDevicePickers() {
@@ -137,4 +168,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+}
+
+enum class MidiFilterType(val label: String) {
+    NONE("None"),
+    NOTE_ON("Note On"),
+    NOTE_OFF("Note Off"),
+    CONTROL_CHANGE("Control Change"),
+    PROGRAM_CHANGE("Program Change")
 }
