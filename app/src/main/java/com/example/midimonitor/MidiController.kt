@@ -11,7 +11,8 @@ import java.io.IOException
 
 class MidiController(
     context: Context,
-    private val logger: (String) -> Unit
+    private val logger: (String) -> Unit,
+    private val isDebugEnabled: () -> Boolean
 ) {
     private val midiManager = context.getSystemService(Context.MIDI_SERVICE) as MidiManager
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -22,14 +23,18 @@ class MidiController(
     val thruDevices: List<MidiDeviceInfo>
         get() = midiManager.devices.filter { it.outputPortCount > 0 }
 
-    private val midiReceiver = MonitorReceiver(logger)
+    private val midiReceiver = MonitorReceiver(logger, isDebugEnabled)
+
     private var connectedOutputPort: android.media.midi.MidiOutputPort? = null
     private var thruDevice: MidiDeviceInfo? = null
 
+    /*
     fun setFilter(filter: MidiFilterType) {
         midiReceiver.filter = filter
         logger("Filter set to: ${filter.label}")
     }
+
+     */
 
     fun connectInput(deviceInfo: MidiDeviceInfo) {
         logger("Attempting to connect INPUT: ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")

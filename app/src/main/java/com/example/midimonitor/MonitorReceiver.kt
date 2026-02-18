@@ -6,17 +6,20 @@ import java.io.IOException
 
 // --- Receiver Class ---
 class MonitorReceiver(
-    private val log: (String) -> Unit
+    private val log: (String) -> Unit,
+    private val isDebugEnabled: () -> Boolean
 ) : MidiReceiver() {
 
-    @Volatile
-    var debug: Boolean = false   // 👈 NEW
+    //@Volatile
+    //var debug: Boolean = false   // 👈 NEW
     @Volatile
     private var thruInputPort: MidiInputPort? = null
     //@Volatile
     //var filter: MidiFilterType = MidiFilterType.NONE   // ✅ NEW
-    @Volatile
-    var filterNoteOff: Boolean = false
+    //@Volatile
+    //var filterNoteOff: Boolean = false
+    //@Volatile
+    //private var ignoreNoteOff = false   // ✅ THIS is what was missing
 
     @Volatile private var filterEnabled = false
     @Volatile private var debugEnabled = false
@@ -39,27 +42,37 @@ class MonitorReceiver(
     override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
 
         if (count > 0) {
-            if (debug) {
+            if (isDebugEnabled()) {
                 val msg = parseMidi(data, offset, count)
                 log("Received MIDI: $msg")
             }
         }
 
         val status = data[offset].toInt() and 0xFF
-        val type   = status and 0xF0
+        //val type   = status and 0xF0
 
         val velocity: Int? =
             if (count >= 3) data[offset + 2].toInt() and 0xFF
             else null
 
         //if (filterEnabled && isNoteOff(data, offset)) {
-        //    return // ❌ discard NoteOff
+        if (filterEnabled && isNoteOff(status, velocity)) {
+            return // ❌ discard NoteOff
+        }
+
+
+        //if (filterNoteOff && isNoteOff(status, velocity)) {
+        //    return   // 🚫 DROP NOTE OFF
         //}
 
-
-        if (filterNoteOff && isNoteOff(status, velocity)) {
-            return   // 🚫 DROP NOTE OFF
+        /*
+        // NOTE OFF = 0x8n
+        if (ignoreNoteOff && status in 0x80..0x8F) {
+            return   // 🚫 filtered out
         }
+
+         */
+
 
         try {
             if (thruInputPort != null) {
@@ -72,6 +85,14 @@ class MonitorReceiver(
             log("Error sending to THRU port: ${e.message}")
         }
     }
+
+    /*
+    fun setIgnoreNoteOff(enabled: Boolean) {
+        ignoreNoteOff = enabled
+        log("Ignore NOTE OFF = $ignoreNoteOff")
+    }
+
+     */
 
     private fun isNoteOff(status: Int, velocity: Int?): Boolean {
         val type = status and 0xF0

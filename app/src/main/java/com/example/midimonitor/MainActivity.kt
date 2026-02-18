@@ -26,12 +26,14 @@ class MainActivity : AppCompatActivity() {
     private var isRefreshingDevices = false
     private var inputItems: List<MidiDeviceItem?> = emptyList()
     private var thruItems: List<MidiDeviceItem?> = emptyList()
-    private lateinit var filterSpinner: Spinner
+    //private lateinit var filterSpinner: Spinner
     private var selectedFilter: MidiFilterType = MidiFilterType.NONE
     private lateinit var filterButton: Button
     private var filterEnabled = false
+    private var debugEnabled = true
 
 
+/*
     private fun setupFilterSpinner() {
         filterSpinner = findViewById(R.id.filterSpinner)
         val adapter = ArrayAdapter(
@@ -54,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+ */
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -66,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         midiController = MidiController(
             context = this,
             logger = ::log,
+            isDebugEnabled = { debugEnabled }
         )
 
         //log("\n======================\n       OnCreate running\n======================\n")
@@ -90,7 +95,7 @@ class MainActivity : AppCompatActivity() {
 
         setupDevicePickers()
 
-        setupFilterSpinner()
+        //setupFilterSpinner()
 
     }
 
