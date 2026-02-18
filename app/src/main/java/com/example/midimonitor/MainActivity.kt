@@ -8,6 +8,7 @@ import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Button
+import android.widget.ToggleButton
 import androidx.appcompat.app.AppCompatActivity
 import android.media.midi.MidiDeviceInfo   // ✅ Add this
 
@@ -26,42 +27,18 @@ class MainActivity : AppCompatActivity() {
     private var isRefreshingDevices = false
     private var inputItems: List<MidiDeviceItem?> = emptyList()
     private var thruItems: List<MidiDeviceItem?> = emptyList()
-    //private lateinit var filterSpinner: Spinner
-    private var selectedFilter: MidiFilterType = MidiFilterType.NONE
-    private lateinit var filterButton: Button
-    private var filterEnabled = false
     private var debugEnabled = true
-
-
-/*
-    private fun setupFilterSpinner() {
-        filterSpinner = findViewById(R.id.filterSpinner)
-        val adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            MidiFilterType.values().map { it.label }
-        )
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        filterSpinner.adapter = adapter
-
-        filterSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                //selectedFilter = MidiFilterType.values()[position]
-                val filter = MidiFilterType.values()[position]
-                midiController.setFilter(filter)
-                log("MIDI Filter set to: ${selectedFilter.label}")
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {}
-        }
-    }
-
- */
+    private lateinit var sustainToggle: ToggleButton
+    private lateinit var retriggerButton: Button
+    private lateinit var debugToggle: ToggleButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        sustainToggle = findViewById(R.id.sustainToggle)
+        retriggerButton = findViewById(R.id.sustainPulse)
+        debugToggle = findViewById(R.id.debugToggle)
         logView = findViewById(R.id.logView)
         inputSpinner = findViewById(R.id.inputSpinner)
         thruSpinner = findViewById(R.id.thruSpinner)
@@ -73,29 +50,21 @@ class MainActivity : AppCompatActivity() {
             isDebugEnabled = { debugEnabled }
         )
 
-        //log("\n======================\n       OnCreate running\n======================\n")
-
-        //filterButton = findViewById(R.id.filterButton)
-        val filterButton = findViewById<Button>(R.id.filterButton)
-
-        filterButton.setOnClickListener {
-            filterEnabled = !filterEnabled
-            debugEnabled = filterEnabled   // 🔴 toggle together
-
-            midiController.setFilterEnabled(filterEnabled)
-            midiController.setDebugEnabled(debugEnabled)
-
-            filterButton.text =
-                if (filterEnabled) "FILTER ON" else "FILTER OFF"
-
-            log(
-                "Filter=${filterEnabled}, Debug=${debugEnabled}"
-            )
+        sustainToggle.setOnCheckedChangeListener { _, enabled ->
+            midiController.setSustainMode(enabled)
+            log("Sustain mode: ${if (enabled) "ON" else "OFF"}")
+        }
+        retriggerButton.setOnClickListener {
+            midiController.retriggerSustain()
+            log("Sustain retriggered")
+        }
+        debugToggle.setOnCheckedChangeListener { _, enabled ->
+            debugEnabled = enabled
+            //midiController.setDebugEnabled(enabled)
+            log("Debug ${if (enabled) "enabled" else "disabled"}")
         }
 
         setupDevicePickers()
-
-        //setupFilterSpinner()
 
     }
 
@@ -195,12 +164,4 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-}
-
-enum class MidiFilterType(val label: String) {
-    NONE("None"),
-    NOTE_ON("Note On"),
-    NOTE_OFF("Note Off"),
-    CONTROL_CHANGE("Control Change"),
-    PROGRAM_CHANGE("Program Change")
 }

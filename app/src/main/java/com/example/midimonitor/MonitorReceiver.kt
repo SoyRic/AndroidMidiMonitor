@@ -10,33 +10,27 @@ class MonitorReceiver(
     private val isDebugEnabled: () -> Boolean
 ) : MidiReceiver() {
 
-    //@Volatile
-    //var debug: Boolean = false   // 👈 NEW
     @Volatile
     private var thruInputPort: MidiInputPort? = null
-    //@Volatile
-    //var filter: MidiFilterType = MidiFilterType.NONE   // ✅ NEW
-    //@Volatile
-    //var filterNoteOff: Boolean = false
-    //@Volatile
-    //private var ignoreNoteOff = false   // ✅ THIS is what was missing
-
     @Volatile private var filterEnabled = false
-    @Volatile private var debugEnabled = false
 
-
+    @Volatile private var sustainMode = false
+    //@Volatile private var debugEnabled = false
 
     fun setThruPort(port: MidiInputPort?) {
         thruInputPort = port
         log("THRU port set")
     }
 
-    fun setFilterEnabled(enabled: Boolean) {
-        filterEnabled = enabled
-    }
-
+    /*
     fun setDebugEnabled(enabled: Boolean) {
         debugEnabled = enabled
+    }
+
+     */
+
+    fun setSustainMode(enabled: Boolean) {
+        sustainMode = enabled
     }
 
     override fun onSend(data: ByteArray, offset: Int, count: Int, timestamp: Long) {
@@ -49,30 +43,26 @@ class MonitorReceiver(
         }
 
         val status = data[offset].toInt() and 0xFF
-        //val type   = status and 0xF0
+        val type   = status and 0xF0
 
         val velocity: Int? =
             if (count >= 3) data[offset + 2].toInt() and 0xFF
             else null
 
-        //if (filterEnabled && isNoteOff(data, offset)) {
-        if (filterEnabled && isNoteOff(status, velocity)) {
-            return // ❌ discard NoteOff
+        val isNoteOff =
+            type == 0x80 ||
+                    (type == 0x90 && count >= 3 && data[offset + 2] == 0.toByte())
+
+        if (sustainMode && isNoteOff) {
+            if (isDebugEnabled()) {
+                log("Filtered NoteOff")
+            }
+            return
         }
 
-
-        //if (filterNoteOff && isNoteOff(status, velocity)) {
-        //    return   // 🚫 DROP NOTE OFF
+        //if (filterEnabled && isNoteOff(status, velocity)) {
+        //    return // ❌ discard NoteOff
         //}
-
-        /*
-        // NOTE OFF = 0x8n
-        if (ignoreNoteOff && status in 0x80..0x8F) {
-            return   // 🚫 filtered out
-        }
-
-         */
-
 
         try {
             if (thruInputPort != null) {
@@ -86,48 +76,40 @@ class MonitorReceiver(
         }
     }
 
-    /*
-    fun setIgnoreNoteOff(enabled: Boolean) {
-        ignoreNoteOff = enabled
-        log("Ignore NOTE OFF = $ignoreNoteOff")
-    }
-
-     */
-
     private fun isNoteOff(status: Int, velocity: Int?): Boolean {
         val type = status and 0xF0
         return type == 0x80 || (type == 0x90 && velocity == 0)
     }
-/*
-    fun shouldDiscard(
-        status: Int,
-        velocity: Int?
-    ): Boolean {
 
-        val type = status and 0xF0
+    /**/
+    internal fun sendAllNotesOff() {
+        val thru = thruInputPort ?: return
 
-        return when (filter) {
+        for (channel in 0..15) {
+            val msg = byteArrayOf(
+                (0xB0 or channel).toByte(),
+                123.toByte(), // All Notes Off
+                0
+            )
 
-            MidiFilterType.NONE ->
-                false   // discard nothing
+            try {
+                thru.send(msg, 0, msg.size)
+            } catch (e: IOException) {
+                if (isDebugEnabled()) {
+                    log("Failed to send AllNotesOff ch=$channel: ${e.message}")
+                }
+            }
+        }
 
-            MidiFilterType.NOTE_ON ->
-                type == 0x90 && velocity != null && velocity > 0
-
-            MidiFilterType.NOTE_OFF ->
-                type == 0x80 ||
-                        (type == 0x90 && velocity != null && velocity == 0)
-
-            MidiFilterType.CONTROL_CHANGE ->
-                type == 0xB0
-
-            MidiFilterType.PROGRAM_CHANGE ->
-                type == 0xC0
+        if (isDebugEnabled()) {
+            log("All Notes Off sent")
         }
     }
- */
+
+     /**/
 
 }
+
 
 // --- Top-Level Utility Function ---
 fun parseMidi(data: ByteArray, offset: Int = 0, count: Int = data.size): String {

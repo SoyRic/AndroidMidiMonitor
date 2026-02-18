@@ -28,14 +28,6 @@ class MidiController(
     private var connectedOutputPort: android.media.midi.MidiOutputPort? = null
     private var thruDevice: MidiDeviceInfo? = null
 
-    /*
-    fun setFilter(filter: MidiFilterType) {
-        midiReceiver.filter = filter
-        logger("Filter set to: ${filter.label}")
-    }
-
-     */
-
     fun connectInput(deviceInfo: MidiDeviceInfo) {
         logger("Attempting to connect INPUT: ${deviceInfo.properties.getString(MidiDeviceInfo.PROPERTY_NAME)}")
 
@@ -104,13 +96,21 @@ class MidiController(
         disconnectThru()
         logger("MIDI Controller stopped and resources released.")
     }
-
-    fun setFilterEnabled(enabled: Boolean) {
-        midiReceiver.setFilterEnabled(enabled)
-    }
-
+/*
     fun setDebugEnabled(enabled: Boolean) {
         midiReceiver.setDebugEnabled(enabled)
     }
+
+ */
+
+    fun setSustainMode(enabled: Boolean) {
+        midiReceiver.setSustainMode(enabled)
+    }
+
+    fun retriggerSustain(){
+        midiReceiver.sendAllNotesOff()
+        midiReceiver.setSustainMode(true)
+    }
+
 
 }

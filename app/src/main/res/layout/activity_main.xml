@@ -1,72 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- INPUT picker -->
-    <TextView
-        android:text="MIDI INPUT"
-        android:textStyle="bold"
+    <!-- ========================= -->
+    <!-- CONTROL BAR (Buttons)     -->
+    <!-- ========================= -->
+    <LinearLayout
+        android:id="@+id/controlBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
 
+        <!-- 1) Sustain / NoteOff filter toggle -->
+        <ToggleButton
+            android:id="@+id/sustainToggle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textOn="Sustain ON"
+            android:textOff="Sustain OFF" />
+
+        <!-- 3) Debug toggle (smaller) -->
+        <ToggleButton
+            android:id="@+id/debugToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textOn="DBG"
+            android:textOff="DBG" />
+    </LinearLayout>
+
+    <!-- 2) Quick sustain reset -->
+    <Button
+        android:id="@+id/sustainPulse"
+        android:layout_width="350dp"
+        android:layout_height="200dp"
+        android:layout_marginStart="20dp"
+        android:text="↻" />
+
+    <!-- ========================= -->
+    <!-- DEVICE SELECTORS          -->
+    <!-- ========================= -->
     <Spinner
         android:id="@+id/inputSpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"/>
-
-    <!-- THRU picker -->
-    <TextView
-        android:text="MIDI THRU"
-        android:textStyle="bold"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:spinnerMode="dropdown"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:layout_marginBottom="8dp" />
 
     <Spinner
         android:id="@+id/thruSpinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"/>
+        android:spinnerMode="dropdown"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:layout_marginBottom="8dp" />
 
-    <!-- LOG WINDOW -->
-    <TextView
-        android:text="MIDI EVENTS"
-        android:textStyle="bold"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
-
+    <!-- ========================= -->
+    <!-- MIDI LOG OUTPUT           -->
+    <!-- ========================= -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#111"
-        android:padding="8dp">
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:fillViewport="true">
 
         <TextView
             android:id="@+id/logView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#00FF00"
             android:textSize="12sp"
-            android:typeface="monospace"/>
+            android:typeface="monospace"
+            android:textIsSelectable="true" />
     </ScrollView>
-
-    <Spinner
-    android:id="@+id/filterSpinner"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="8dp" />
-
-    <Button
-    android:id="@+id/filterButton"
-    android:layout_width="match_parent"
-    android:layout_height="120dp"
-    android:text="NOTE OFF FILTER: OFF"
-    android:textSize="24sp"
-    android:layout_margin="16dp" />
 
 </LinearLayout>
 
