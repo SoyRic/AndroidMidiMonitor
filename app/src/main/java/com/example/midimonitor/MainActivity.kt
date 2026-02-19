@@ -56,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         }
         retriggerButton.setOnClickListener {
             midiController.retriggerSustain()
+            sustainToggle.setText("Sustain ON")
+            sustainToggle.setChecked(true)
             log("Sustain retriggered")
         }
         debugToggle.setOnCheckedChangeListener { _, enabled ->
