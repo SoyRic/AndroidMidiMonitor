@@ -105,6 +105,9 @@ class MidiController(
 
     fun setSustainMode(enabled: Boolean) {
         midiReceiver.setSustainMode(enabled)
+        if (!enabled) {
+            midiReceiver.sendAllNotesOff()
+        }
     }
 
     fun retriggerSustain(){

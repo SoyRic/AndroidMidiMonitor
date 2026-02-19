@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     private var isRefreshingDevices = false
     private var inputItems: List<MidiDeviceItem?> = emptyList()
     private var thruItems: List<MidiDeviceItem?> = emptyList()
-    private var debugEnabled = true
+    private var debugEnabled = false
     private lateinit var sustainToggle: ToggleButton
     private lateinit var retriggerButton: Button
     private lateinit var debugToggle: ToggleButton

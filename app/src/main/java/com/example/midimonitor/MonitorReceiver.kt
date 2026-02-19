@@ -67,7 +67,9 @@ class MonitorReceiver(
         try {
             if (thruInputPort != null) {
                 thruInputPort?.send(data, offset, count)
-                log("Forwarded MIDI to THRU")
+                if (isDebugEnabled()) {
+                    log("Forwarded MIDI to THRU")
+                }
             } else {
                 log("THRU port is null, not forwarding")
             }
